@@ -1,0 +1,72 @@
+Functional programmers often speak of
+implementing programs with a PURE CORE and a THIN LAYER on the outside that handles
+effects
+
+Referential transparency and referential opacity are properties of parts of computer programs. 
+An expression is called referentially transparent if it can be replaced with its corresponding value without changing the program's behavior
+This requires that the expression is pure, that is to say the expression value must be the same for the same inputs and its evaluation must have no side effects. 
+An expression that is not referentially transparent is called referentially opaque.
+In mathematics all function applications are referentially transparent, by the definition of what constitutes a mathematical function. 
+However, this is not always the case in programming, where the terms procedure and method are used to avoid misleading connotations. In functional programming only referentially transparent functions are considered. 
+Some programming languages provide means to guarantee referential transparency. 
+Some functional programming languages enforce referential transparency for all functions.
+
+RT This is a property of expressions in general and not just functions
+
+This is all it means for an expression to be referentially transparent—in any program, t
+he expression can be replaced by its result without changing the meaning of
+the program. 
+
+Referential transparency and purity
+An expression e is referentially transparent if, for all programs p, all occurrences of e
+in p can be replaced by the result of evaluating e without affecting the meaning of p.
+A function f is pure if the expression f(x) is referentially transparent for all referentially transparent x.
+
+This
+constraint enables a simple and natural mode of reasoning about program evaluation
+called the substitution model. When expressions are referentially transparent, we can
+imagine that computation proceeds much like we’d solve an algebraic equation. We
+fully expand every part of an expression, replacing all variables with their referents,
+and then reduce it to its simplest form. At each step we replace a term with an
+equivalent one; computation proceeds by substituting equals for equals. In other words,
+RT enables equational reasoning about programs
+
+Side effects make reasoning about program behavior more difficult.
+Conversely, the substitution model is simple to reason about since effects of evaluation are purely local (they affect only the expression being evaluated) and we need
+not mentally simulate sequences of state updates to understand a block of code.
+Understanding requires only local reasoning. We need not mentally track all the state
+changes that may occur before or after our function’s execution to understand what
+our function will do; we simply look at the function’s definition and substitute the
+arguments into its body. 
+
+
+Modules, objects, and namespaces
+An object whose primary purpose is giving its members a namespace is sometimes called a module. 
+
+Tail calls in Scala
+A call is said to be in tail position if the caller does nothing other than return the value
+of the recursive call. For example, the recursive call to go(n-1,n*acc) we discussed
+earlier is in tail position, since the method returns the value of this recursive call directly
+and does nothing else with it. On the other hand, if we said 1 + go(n-1,n*acc), go
+would no longer be in tail position, since the method would still have work to do when
+go returned its result (namely, adding 1 to it).
+If all recursive calls made by a function are in tail position, Scala automatically compiles the recursion to iterative loops that don’t consume call stack frames for each
+iteration. By default, Scala doesn’t tell us if tail call elimination was successful, but
+if we’re expecting this to occur for a recursive function we write, we can tell the Scala
+compiler about this assumption using the tailrec annotation (http://mng.bz/
+bWT5),@annotation.tailrec so it can give us a compile error if it’s unable to eliminate the tail calls of the
+function.
+
+Variable-naming conventions
+It’s a common convention to use names like f, g, and h for parameters to a higherorder function. In functional programming, we tend to use very short variable names,
+even one-letter names. This is usually because HOFs are so general that they have
+no opinion on what the argument should actually do. All they know about the argument is its type. 
+Many functional programmers feel that short names make code easier to read, since it makes the structure of the code easier to see at a glance.
+
+Parametric polymorphism
+In programming languages and type theory, parametric polymorphism is a way to make a language more expressive, while still maintaining full static type-safety. 
+Using parametric polymorphism, a function or a data type can be written generically so that it can handle values identically without depending on their type. 
+Such functions and data types are called generic functions and generic datatypes respectively and form the basis of generic programming.
+For example, a function append that joins two lists can be constructed so that it does not care about the type of elements: 
+it can append lists of integers, lists of real numbers, lists of strings, and so on. Let the type variable a denote the type of elements in the lists
+
