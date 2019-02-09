@@ -13,7 +13,7 @@ Some functional programming languages enforce referential transparency for all f
 
 RT This is a property of expressions in general and not just functions
 
-This is all it means for an expression to be referentially transparent—in any program, t
+This is all it means for an expression to be referentially transparentï¿½in any program, t
 he expression can be replaced by its result without changing the meaning of
 the program. 
 
@@ -25,7 +25,7 @@ A function f is pure if the expression f(x) is referentially transparent for all
 This
 constraint enables a simple and natural mode of reasoning about program evaluation
 called the substitution model. When expressions are referentially transparent, we can
-imagine that computation proceeds much like we’d solve an algebraic equation. We
+imagine that computation proceeds much like weï¿½d solve an algebraic equation. We
 fully expand every part of an expression, replacing all variables with their referents,
 and then reduce it to its simplest form. At each step we replace a term with an
 equivalent one; computation proceeds by substituting equals for equals. In other words,
@@ -35,8 +35,8 @@ Side effects make reasoning about program behavior more difficult.
 Conversely, the substitution model is simple to reason about since effects of evaluation are purely local (they affect only the expression being evaluated) and we need
 not mentally simulate sequences of state updates to understand a block of code.
 Understanding requires only local reasoning. We need not mentally track all the state
-changes that may occur before or after our function’s execution to understand what
-our function will do; we simply look at the function’s definition and substitute the
+changes that may occur before or after our functionï¿½s execution to understand what
+our function will do; we simply look at the functionï¿½s definition and substitute the
 arguments into its body. 
 
 
@@ -50,15 +50,15 @@ earlier is in tail position, since the method returns the value of this recursiv
 and does nothing else with it. On the other hand, if we said 1 + go(n-1,n*acc), go
 would no longer be in tail position, since the method would still have work to do when
 go returned its result (namely, adding 1 to it).
-If all recursive calls made by a function are in tail position, Scala automatically compiles the recursion to iterative loops that don’t consume call stack frames for each
-iteration. By default, Scala doesn’t tell us if tail call elimination was successful, but
-if we’re expecting this to occur for a recursive function we write, we can tell the Scala
+If all recursive calls made by a function are in tail position, Scala automatically compiles the recursion to iterative loops that donï¿½t consume call stack frames for each
+iteration. By default, Scala doesnï¿½t tell us if tail call elimination was successful, but
+if weï¿½re expecting this to occur for a recursive function we write, we can tell the Scala
 compiler about this assumption using the tailrec annotation (http://mng.bz/
-bWT5),@annotation.tailrec so it can give us a compile error if it’s unable to eliminate the tail calls of the
+bWT5),@annotation.tailrec so it can give us a compile error if itï¿½s unable to eliminate the tail calls of the
 function.
 
 Variable-naming conventions
-It’s a common convention to use names like f, g, and h for parameters to a higherorder function. In functional programming, we tend to use very short variable names,
+Itï¿½s a common convention to use names like f, g, and h for parameters to a higherorder function. In functional programming, we tend to use very short variable names,
 even one-letter names. This is usually because HOFs are so general that they have
 no opinion on what the argument should actually do. All they know about the argument is its type. 
 Many functional programmers feel that short names make code easier to read, since it makes the structure of the code easier to see at a glance.
@@ -69,4 +69,32 @@ Using parametric polymorphism, a function or a data type can be written generica
 Such functions and data types are called generic functions and generic datatypes respectively and form the basis of generic programming.
 For example, a function append that joins two lists can be constructed so that it does not care about the type of elements: 
 it can append lists of integers, lists of real numbers, lists of strings, and so on. Let the type variable a denote the type of elements in the lists
+
+Pessimistic copying can become a problem in large programs. When mutable data is passed through a chain
+of loosely coupled components, each component has to make its own copy of the data because other components might modify it. Immutable data is always safe to share, so we never have to make copies. We find that
+in the large, FP can often achieve greater efficiency than approaches that rely on side effects, due to much
+greater sharing of data and computation.
+
+Data sharing
+"a" "b" "c" "d"
+List("a", "b", "c", "d") List("b", "c", "d")
+Both lists share the same data in memory. .tail does not modify the
+original list, it simply references the tail of the original list.
+Defensive copying is not needed, because the list is immutable.
+
+The syntax for calling this version of dropWhile looks like dropWhile(xs)(f). That is,
+dropWhile(xs) is returning a function, which we then call with the argument f (in
+other words, dropWhile is curried7
+). The main reason for grouping the arguments this
+way is to assist with type inference. We can now use dropWhile without annotations:
+val xs: List[Int] = List(1,2,3,4,5)
+val ex1 = dropWhile(xs)(x => x < 4)
+
+Note that x is not annotated with its type.
+ More generally, when a function definition contains multiple argument groups,
+type information flows from left to right across these argument groups. Here, the first
+argument group fixes the type parameter A of dropWhile to Int, so the annotation on
+x => x < 4 is not required.
+This is an unfortunate restriction of the Scala compiler; other functional languages like Haskell and OCaml
+provide complete inference, meaning type annotations are almost never required
 
