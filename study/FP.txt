@@ -98,3 +98,26 @@ x => x < 4 is not required.
 This is an unfortunate restriction of the Scala compiler; other functional languages like Haskell and OCaml
 provide complete inference, meaning type annotations are almost never required
 
+In computer programming, especially functional programming and type theory,
+an algebraic data type is a kind of composite type, i.e.,
+a type formed by combining other types.
+Two common classes of algebraic types are product types (i.e., tuples and records)
+and sum types (i.e., tagged or disjoint unions or variant types)
+
+List is just one example of what’s called an algebraic data type (ADT).
+(Somewhat confusingly, ADT is sometimes used elsewhere to stand for abstract data type.)
+An ADT is just a data type defined by one or more data constructors,
+each of which may contain zero or more arguments.
+We say that the data type is the sum or union of its data constructors,
+and each data constructor is the product of its arguments, hence the name algebraic data type
+
+Unary, Binary, Arity
+
+ADTs and encapsulation
+One might object that algebraic data types violate encapsulation by making public the
+internal representation of a type. In FP, we approach concerns about encapsulation
+differently—we don’t typically have delicate mutable state which could lead to bugs
+or violation of invariants if exposed publicly. Exposing the data constructors of a type
+is often fine, and the decision to do so is approached much like any other decision
+about what the public API of a data type should be
+
