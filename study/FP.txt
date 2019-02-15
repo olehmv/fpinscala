@@ -121,3 +121,229 @@ or violation of invariants if exposed publicly. Exposing the data constructors o
 is often fine, and the decision to do so is approached much like any other decision
 about what the public API of a data type should be
 
+Vectors are much better behaved here because to get an index of a vector of length 32, it's a single index access.
+If the vector has size up to about a 1,000, then it's just two accesses, so generally the number of accesses are the depth of the vector.
+And we'll see that that debt grows very slowly. A depth of six gives you a billion elements.
+So generally the formula would be that the depth of the vector is log to the basis of 32 of N, where N is the size of the vector.
+So we've seen that log to the basis of 32 is a function that grows very, very slowly.
+That's why vectors have a pretty decent random access performance profile much, much better than list.
+Another advantage of vectors is that they are fairly good for bulk operations that traverse a sequence.
+So such bulk operations could be for instance a map that applies a function to every element, or a fold that reduces addition elements with an operator.
+For a vector then you can do that in chunks of 32 and that happens to be coincide fairly closely to the size of a cash line in modern processes.
+So it means that all the 32 addition elements will be in a single cache line and that accesses will be fairly fast.
+For list on the other hand, you have this recursive structure where essentially every list element is in a con cell, with just one element and the pointer to the rest.
+And you have no guarantee that these con cells are anywhere near to each other.
+They might be in different cache lines and different pages so the locality for list accesses could be much worse than the locality for vector accesses.
+So you could ask if vectors are so much better why keep list at all?
+But it turns out that if your operations fit nicely into the model that you take the head of the recursive data structure, that's the constant time operation for list,
+whereas for vectors who have to go down potentially several layers.
+And then to take the tail to process the rest, again a constant type operation for lists, whereas for vectors it would be much more complicated.
+In that case, definitely, if your access patterns have this recursive structures, lists are better.
+If your access patterns are typically bulk operations, such as map or fold, or filter, then a vector would be preferable.
+Fortunately, it's easy to change between vectors and lists in your program because the two are quiet analogous.
+So we create vectors just like we create list, only we write vector where we had written list.
+And we can apply all the same operations of list, also to vectors, map, fold, head, tail, and so on.
+Except for the cons because cons in a list, that's the primitive thing that builds a list and that let's us pattern match against the list.
+Instead of a con, vectors have operations +; which adds a new element to the left of the list, and :+ which adds an element to the right of the list.
+So you see theses here, x +: xs creates a new vector with leading element x followed by all elements of xs. And xs :+ x creates a new vector with trailing element x, preceded by all elements of xs.
+So note that the colon always points to where the collection is, where the sequence is.
+
+Handling errors without exceptions
+
+The big idea is that we
+can represent failures and exceptions with ordinary values, and we can write
+higher-order functions that abstract out common patterns of error handling and
+recovery. The functional solution, of returning errors as values, is safer and retains
+referential transparency
+
+def failingFn(i: Int): Int = {
+  val y: Int = throw new Exception("fail!")
+  try {
+    val x = 42 + 5
+    x+y
+  }
+  catch { case e: Exception => 43 }
+}
+failingFn(12)
+
+scala> failingFn(12)
+java.lang.Exception: fail!
+at .failingFn(<console>:8)
+
+
+def failingFn2(i: Int): Int = {
+  try {
+    val x = 42 + 5
+    //A thrown Exception can be given any type; here we’re annotating it with the type Int.
+    x + ((throw new Exception("fail!")): Int)
+  }
+  catch { case e: Exception => 43 }
+}
+failingFn2(12)
+
+scala> failingFn2(12)
+res1: Int = 43
+
+Another way of understanding RT is that the meaning of RT expressions does not depend on context and may be reasoned about locally,
+whereas the meaning of non-RT expressions is context-dependent and requires more global reasoning.
+For instance, the meaning of the RT expression 42 + 5 doesn’t depend on the larger expression it’s embedded
+in—it’s always and forever equal to 47.
+
+But the meaning of the expression throw new Exception("fail")
+is very context-dependent—as we just demonstrated, it takes on different meanings
+depending on which try block (if any) it’s nested within
+
+As we just discussed, exceptions break RT and introduce context dependence, moving us
+away from the simple reasoning of the substitution model and making it possible
+to write confusing exception-based code. This is the source of the folklore advice
+that exceptions should be used only for error handling, not for control flow.
+
+Exceptions are not type-safe. The type of failingFn, Int => Int tells us nothing
+about the fact that exceptions may occur, and the compiler will certainly not
+force callers of failingFn to make a decision about how to handle those exceptions.
+If we forget to check for an exception in failingFn, this won’t be detected until runtime.
+
+We don’t want to lose out on the primary benefit of exceptions:
+they allow us to consolidate and centralize error-handling logic,
+rather than being forced to distribute this logic throughout our codebase.
+The technique we use is based on an old idea:
+instead of throwing an exception, we return a value indicating that an exceptional condition has occurred.
+This idea might be familiar to anyone who has used return codes in C to handle exceptions.
+But instead of using error codes, we introduce a new generic type for these “possibly defined values”
+and use higher-order functions to encapsulate common patterns of handling and propagating errors.
+Unlike C-style error codes, the error-handling strategy we use is completely type-safe,
+and we get full assistance from the type-checker in forcing us to deal with errors, with a minimum of syntactic noise.
+
+In programming, sentinel value is a special value that is used to terminate a loop.
+The sentinel value typically is chosen so as to not be a legitimate data value that the loop will encounter and attempt to perform with.
+For example, in a loop algorithm that computes non-negative integers,
+the value "-1" can be set as the sentinel value as the computation will never encounter that value as a legitimate processing output.
+Also referred to as a flag value or a signal value.
+
+Possible alternatives to exceptions
+
+The first possibility is to return some sort of bogus value of type Double.
+The second possibility is to force the caller to supply an argument that tells us what to
+do in case we don’t know how to handle the input
+
+We need a way to defer the decision of how to handle undefined cases so that they
+can be dealt with at the most appropriate level
+
+The Option data type
+
+The solution is to represent explicitly in the return type that a function may not always
+have an answer.
+We can think of this as deferring to the caller for the error-handling strategy.
+
+A total function is a function that is defined for all possible values of its input. That is, it terminates and returns a value.
+
+A partial function is a function that is not defined for all possible input values;
+in some cases instead of returning a value, it may never return at all (think infinite cycles),
+throw an exception (which usually states "this is undefined for this input value" or "unexpected input" or whatever) or simply crash the system.
+
+A well-known example of a partial function is the integer division, a divided by b: it's not defined when b is zero!
+
+def mean(xs: Seq[Double]): Option[Double] =
+if (xs.isEmpty) None
+else Some(xs.sum / xs.length)
+
+The return type of mean now reflects the possibility that the result may not always be defined.
+We still always return a result of the declared type (now Option[Double]) from our
+function, so mean is now a total function. It takes each value of the input type to exactly
+one value of the output type.
+
+Variance
+In probability theory and statistics, variance is the expectation of the squared deviation of a random variable from its mean.
+Informally, it measures how far a set of (random) numbers are spread out from their average value
+
+Standard deviation
+a quantity expressing by how much the members of a group differ from the mean value for the group
+
+The general rule of thumb is
+that we use exceptions only if no reasonable program would ever catch the exception;
+if for some callers the exception might be a recoverable error, we use Option or Either
+
+Returning errors as ordinary values can be convenient and the use of higher-order functions
+lets us achieve the same sort of consolidation of errorhandling logic we would get from using exceptions.
+Note that we don’t have to check for None at each stage of the computation—we can apply several transformations
+and then check for and handle None when we’re ready. But we also get additional safety,
+since Option[A] is a different type than A, and the compiler won’t let us forget to explicitly defer or handle the possibility of None.
+
+It may be easy to jump to the conclusion that once we start using Option, it infects our
+entire code base. One can imagine how any callers of methods that take or return
+Option will have to be modified to handle either Some or None. But this doesn’t happen,
+and the reason is that we can lift ordinary functions to become functions that operate on Option
+
+For example, the map function lets us operate on values of type Option[A] using a
+function of type A => B, returning Option[B]. Another way of looking at this is that map
+turns a function f of type A => B into a function of type Option[A] => Option[B].
+Let’s make this explicit:
+
+def lift[A,B](f: A => B): Option[A] => Option[B] = _ map f
+
+This tells us that any function that we already have lying around can be transformed
+(via lift) to operate within the context of a single Option value. Let’s look at an example:
+
+val absO: Option[Double] => Option[Double] = lift(math.abs)
+
+For-comprehensions
+Since lifting functions is so common in Scala, Scala provides a syntactic construct
+called the for-comprehension that it expands automatically to a series of flatMap and
+map calls. Let’s look at how map2 could be implemented with for-comprehensions.
+
+def flatMap[B](f: A => Option[B]): Option[B] =
+    if (isEmpty) None else f(this.get)
+
+def map[B](f: A => B): Option[B] =
+    if (isEmpty) None else Some(f(this.get))
+
+Here’s our original version:
+
+def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C):
+Option[C] =
+a flatMap (aa =>
+b map (bb =>
+f(aa, bb)))
+
+And here’s the exact same code written as a for-comprehension:
+
+def map2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C):
+Option[C] =
+for {
+aa <- a
+bb <- b
+} yield f(aa, bb)
+
+A for-comprehension consists of a sequence of bindings, like aa <- a, followed by a
+yield after the closing brace, where the yield may make use of any of the values
+on the left side of any previous <- binding. The compiler desugars the bindings to
+flatMap calls, with the final binding and yield being converted to a call to map.
+You should feel free to use for-comprehensions in place of explicit calls to flatMap
+and map.
+
+The Either data type
+
+The big idea in this chapter is that we can represent failures and exceptions with ordinary values,
+and write functions that abstract out common patterns of error handling
+and recovery. Option isn’t the only data type we could use for this purpose, and
+although it gets used frequently, it’s rather simplistic. One thing you may have noticed
+with Option is that it doesn’t tell us anything about what went wrong in the case of an
+exceptional condition. All it can do is give us None, indicating that there’s no value to
+be had. But sometimes we want to know more. For example, we might want a String
+that gives more information, or if an exception was raised, we might want to know
+what that error actually was
+
+We can craft a data type that encodes whatever information we want about failures.
+Sometimes just knowing whether a failure occurred is sufficient, in which case we can
+use Option; other times we want more information. In this section, we’ll walk through
+a simple extension to Option, the Either data type, which lets us track a reason for the
+failure.
+
+sealed trait Either[+E, +A]
+case class Left[+E](value: E) extends Either[E, Nothing]
+case class Right[+A](value: A) extends Either[Nothing, A]
+
+Either has only two cases, just like Option. The essential difference is that both cases
+carry a value.
+
+
