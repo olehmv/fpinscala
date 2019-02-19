@@ -347,3 +347,143 @@ Either has only two cases, just like Option. The essential difference is that bo
 carry a value.
 
 
+Strictness and laziness
+
+
+Strict and non-strict functions
+Non-strictness is a property of a function. To say a function is non-strict just means
+that the function may choose not to evaluate one or more of its arguments.
+In contrast, a strict function always evaluates its arguments. Strict functions are the norm in
+most programming languages, and indeed most languages only support functions
+that expect their arguments fully evaluated. Unless we tell it otherwise, any function
+definition in Scala will be strict (and all the functions we’ve defined so far have been strict).
+
+For example, the short-circuiting Boolean functions && and ||,
+found in many programming languages including Scala, are non-strict.
+
+scala> false && { println("!!"); true } // does not print anything
+res0: Boolean = false
+
+Another example of non-strictness is the if control construct in Scala:
+val result = if (input.isEmpty) sys.error("empty input") else input
+Even though if is a built-in language construct in Scala,
+it can be thought of as a function accepting three parameters: a condition of type Boolean, an expression of some
+type A to return in the case that the condition is true, and another expression of the
+same type A to return if the condition is false. This if function would be non-strict,
+since it won’t evaluate all of its arguments. To be more precise, we’d say that the if
+function is strict in its condition parameter, since it’ll always evaluate the condition to
+determine which branch to take, and non-strict in the two branches for the true and
+false cases, since it’ll only evaluate one or the other based on the condition
+
+"The type () => A is a syntactic alias for the type Function0[A]"
+
+In general, the unevaluated form of an expression is called a thunk.
+
+def if2[A](cond: Boolean, onTrue: => A, onFalse: => A): A =
+if (cond) onTrue else onFalse
+
+The arguments we’d like to pass unevaluated have an arrow => immediately before
+their type. In the body of the function,
+we don’t need to do anything special to evaluate an argument annotated with =>. We just reference the identifier as usual. Nor do
+we have to do anything special to call this function
+
+An argument that’s passed unevaluated to a function will be evaluated once for each place it’s referenced in the body of the function.
+That is, Scala won’t (by default) cache the result of evaluating an argument.
+
+scala> def maybeTwice(b: Boolean, i: => Int) = if (b) i+i else 0
+maybeTwice: (b: Boolean, i: => Int)Int
+
+scala> val x = maybeTwice(true, { println("hi"); 1+41 })
+hi
+hi
+x: Int = 84
+
+Here, i is referenced twice in the body of maybeTwice, and we’ve made it particularly
+obvious that it’s evaluated each time by passing the block {println("hi"); 1+41},
+which prints hi as a side effect before returning a result of 42. The expression 1+41
+will be computed twice as well. We can cache the value explicitly if we wish to only evaluate the result once, by using the lazy keyword:
+scala> def maybeTwice2(b: Boolean, i: => Int) = {
+| lazy val j=i
+| if (b) j+j else 0
+| }
+maybeTwice: (b: Boolean, i: => Int)Int
+scala> val x = maybeTwice2(true, { println("hi"); 1+41 })
+hi
+x: Int = 84
+Adding the lazy keyword to a val declaration will cause Scala to delay evaluation of
+the right-hand side of that lazy val declaration until it’s first referenced. It will also
+cache the result so that subsequent references to it don’t trigger repeated evaluation.
+
+Formal definition of strictness
+If the evaluation of an expression runs forever or throws an error instead of returning
+a definite value, we say that the expression doesn’t terminate, or that it evaluates to
+bottom. A function f is strict if the expression f(x) evaluates to bottom for all x that
+evaluate to bottom.
+
+As a final bit of terminology, we say that a non-strict function in Scala takes its arguments by name rather than by value.
+
+Lazy lists, or streams
+Chains of transformations on streams are fused into a single pass through the use of laziness
+
+Memoization
+In computing, memoization or memoisation is an optimization technique used primarily to speed up computer programs
+by storing the results of expensive function calls and returning the cached result when the same inputs occur again
+
+Maps were always partial functions. Applying a map to a key value could lead to an exception if the key was not stored in the map
+What if we could make map's total functions that would never fail, but would give us back some default value if the key wasn't found.
+There’s an operation that does that, it's called withDefaultValue and that operation turns a map into a total function.
+So if you had written for instance cap1 = capitalOfCountry withDefaultValue "<unknown>",
+then we could have safely applied cap1("Andorra") and we would have gotten back "<unknown>" because that's with a default value. No more key note found, exceptions.
+
+In computer science, corecursion is a type of operation that is dual to recursion.
+Whereas recursion works analytically, starting on data further from a base case and breaking it down into smaller data and repeating until one reaches a base case,
+corecursion works synthetically, starting from a base case and building it up, iteratively producing data further removed from a base case.
+Put simply, corecursive algorithms use the data that they themselves produce, bit by bit, as they become available, and needed, to produce further bits of data.
+A similar but distinct concept is generative recursion which may lack a definite "direction" inherent in corecursion and recursion.
+
+Where recursion allows programs to operate on arbitrarily complex data, so long as they can be reduced to simple data (base cases),
+corecursion allows programs to produce arbitrarily complex and potentially infinite data structures,
+such as streams, so long as it can be produced from simple data (base cases) in a sequence of finite steps.
+Where recursion may not terminate, never reaching a base state, corecursion starts from a base state, and thus produces subsequent steps deterministically,
+though it may proceed indefinitely (and thus not terminate under strict evaluation), or it may consume more than it produces and thus become non-productive.
+Many functions that are traditionally analyzed as recursive can alternatively, and arguably more naturally,
+be interpreted as corecursive functions that are terminated at a given stage, for example recurrence relations such as the factorial.
+
+Corecursion can produce both finite and infinite data structures as results, and may employ self-referential data structures.
+Corecursion is often used in conjunction with lazy evaluation, to produce only a finite subset of a potentially infinite structure (rather than trying to produce an entire infinite structure at once).
+Corecursion is a particularly important concept in functional programming, where corecursion and codata allow total languages to work with infinite data structures.
+
+Structural versus generative recursion
+Some authors classify recursion as either "structural" or "generative".
+The distinction is related to where a recursive procedure gets the data that it works on, and how it processes that data:
+
+[Functions that consume structured data] typically decompose their arguments into their immediate structural components and then process those components.
+If one of the immediate components belongs to the same class of data as the input, the function is recursive.
+For that reason, we refer to these functions as (STRUCTURALLY) RECURSIVE FUNCTIONS.
+
+— Felleisen, Findler, Flatt, and Krishnaurthi, How to Design Programs, 2001[4]
+Thus, the defining characteristic of a structurally recursive function is that the argument to each recursive call is the content of a field of the original input.
+Structural recursion includes nearly all tree traversals, including XML processing, binary tree creation and search, etc.
+By considering the algebraic structure of the natural numbers (that is, a natural number is either zero or the successor of a natural number),
+functions such as factorial may also be regarded as structural recursion.
+
+Generative recursion is the alternative:
+Many well-known recursive algorithms generate an entirely new piece of data from the given data and recur on it.
+HtDP (How to Design Programs) refers to this kind as generative recursion.
+Examples of generative recursion include: gcd, quicksort, binary search, mergesort, Newton's method, fractals, and adaptive integration.
+
+This distinction is important in proving termination of a function:
+
+All structurally recursive functions on finite (inductively defined) data structures can easily be shown to terminate,
+via structural induction: intuitively, each recursive call receives a smaller piece of input data, until a base case is reached.
+
+Generatively recursive functions, in contrast, do not necessarily feed smaller input to their recursive calls,
+so proof of their termination is not necessarily as simple, and avoiding infinite loops requires greater care.
+These generatively recursive functions can often be interpreted as corecursive functions – each step generates the new data,
+such as successive approximation in Newton's method – and terminating this corecursion requires that the data eventually satisfy some condition, which is not necessarily guaranteed.
+
+In terms of loop variants, structural recursion is when there is an obvious loop variant, namely size or complexity, which starts off finite and decreases at each recursive step.
+By contrast, generative recursion is when there is not such an obvious loop variant, and termination depends on a function, such as "error of approximation" that does not necessarily decrease to zero,
+and thus termination is not guaranteed without further analysis.
+
+
